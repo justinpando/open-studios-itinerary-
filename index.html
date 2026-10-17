@@ -358,8 +358,9 @@ const unx=px=>(px/256+MAPM.x0)/2**Z*360-180;
 const uny=py=>{const n=Math.PI-2*Math.PI*(py/256+MAPM.y0)/2**Z;return 180/Math.PI*Math.atan(.5*(Math.exp(n)-Math.exp(-n)))};
 LOCS.forEach(l=>{l.x=tx(l.lon);l.y=ty(l.lat)});
 function hav(a,b){const R=6371,d=Math.PI/180,dl=(b.lat-a.lat)*d,dn=(b.lon-a.lon)*d;const h=Math.sin(dl/2)**2+Math.cos(a.lat*d)*Math.cos(b.lat*d)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
-/* custom start: no road data, so estimate: 1.35x straight line at 28 km/h plus 2 min */
-const estSec=(a,b)=>Math.round(hav(a,b)*1.35/28*3600+120);
+/* no road data from a custom start: estimate from straight-line distance, fitted to the real
+   road times between all 90 studio locations (typical error about 1.5 min) */
+const estSec=(a,b)=>Math.round(222+93.6*hav(a,b));
 /* a start at a studio uses the real drive-time table; any other start is estimated */
 function legStart(st,l,from){if(st.loc!=null)return from?DUR[st.loc][l]:DUR[l][st.loc];
   if(from&&st.to&&st.to[l]!=null)return st.to[l];if(!from&&st.back&&st.back[l]!=null)return st.back[l];

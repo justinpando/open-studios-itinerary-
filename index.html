@@ -142,7 +142,11 @@ button,input,select{font:inherit;color:inherit}
 .pop input{accent-color:var(--accent);width:18px;height:18px}
 .pop .pm{font-size:.78rem;color:var(--muted)}
 .pop .x{position:absolute;right:6px;top:4px;border:0;background:none;font-size:1.1rem;cursor:pointer;color:var(--muted)}
-.toast{position:absolute;left:50%;top:var(--ty,20px);transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:8px 14px;border-radius:8px;font-weight:600;z-index:20;font-size:.9rem}
+.rm{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.rmbtn{border:1px solid var(--line);background:none;border-radius:99px;padding:3px 10px;font-size:.78rem;font-weight:600;color:var(--muted);cursor:pointer}
+.rmbtn:hover{border-color:var(--pick);color:var(--pick)}
+.toast .undo{margin-left:12px;border:0;background:none;color:var(--accent-soft);font-weight:800;text-decoration:underline;cursor:pointer;padding:0;font-size:inherit}
+.toast{position:absolute;left:50%;top:var(--ty,20px);transform:translateX(-50%);white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis;background:var(--ink);color:var(--panel);padding:8px 14px;border-radius:8px;font-weight:600;z-index:20;font-size:.9rem}
 /* art viewer */
 .viewer{position:fixed;inset:0;z-index:30;background:rgba(10,11,15,.88);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;
   padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
@@ -538,7 +542,8 @@ function renderRoute(){
           <div class="imgs">${s.who.map(a=>`<button class="zoom" data-view="${a.id}" data-ctx="route" aria-label="View ${esc(a.name)}'s artwork"><img src="${THUMBS[a.id]||''}" alt=""></button>`).join('')}</div>
           <div class="addr">${esc(s.who[0].addr)}</div>
           ${acc.length?`<div class="acc">♿ ${esc(acc.join(' / '))}</div>`:''}
-          <div class="acts"><a href="${dir}" target="_blank" rel="noopener">Directions ↗</a>${s.who.map(a=>`<a href="https://portlandopenstudios.com/2026-artists/${a.id}.html" target="_blank" rel="noopener">${esc(a.name.split(' ')[0])}'s profile ↗</a>`).join('')}</div></div>
+          <div class="acts"><a href="${dir}" target="_blank" rel="noopener">Directions ↗</a>${s.who.map(a=>`<a href="https://portlandopenstudios.com/2026-artists/${a.id}.html" target="_blank" rel="noopener">${esc(a.name.split(' ')[0])}'s profile ↗</a>`).join('')}</div>
+          <div class="rm">${s.who.length>1?s.who.map(a=>`<button class="rmbtn" data-rm="${a.id}">✕ Remove ${esc(a.name.split(' ')[0])}</button>`).join('')+`<button class="rmbtn" data-rm="${s.who.map(a=>a.id).join(',')}">✕ Remove stop</button>`:`<button class="rmbtn" data-rm="${s.who[0].id}">✕ Remove stop</button>`}</div></div>
         <label class="vis"><input type="checkbox" data-visit="${s.l}" ${done?'checked':''}>Seen</label></div>`});
     if(d.back)h+=`<div class="leg">${Math.round(d.back)} min back to start</div>`;
     const links=gmLinks(d,ROUTE.startPt);
@@ -668,6 +673,9 @@ $('visit').onchange=e=>{S.visit=Math.max(5,Math.min(120,+e.target.value||20));sa
 $('twoDays').onchange=e=>{S.twoDays=e.target.checked;save();renderRoute()};
 $('ret').onchange=e=>{S.ret=e.target.checked;save();routeKey='';renderRoute()};
 $('paneRoute').addEventListener('click',e=>{
+  const rm=e.target.closest('[data-rm]');if(rm){const ids=rm.dataset.rm.split(',').filter(id=>S.sel.has(id));
+    ids.forEach(id=>S.sel.delete(id));save();closePop();refresh();
+    toast(ids.length>1?`Removed ${ids.length} artists`:`Removed ${byId[ids[0]].name}`,()=>{ids.forEach(id=>S.sel.add(id));save();refresh()});return}
   if(e.target.id==='pickStart'){S.settingStart=!S.settingStart;refresh();return}
   if(e.target.id==='locate'){locate();return}
   const alt=e.target.closest('[data-alt]');if(alt){const c=S.alts[+alt.dataset.alt];const prev={label:S.start.label,lat:S.start.lat,lon:S.start.lon,query:S.start.query};
@@ -681,7 +689,10 @@ $('paneRoute').addEventListener('change',e=>{const v=e.target.dataset.visit;if(v
   ARTS.filter(a=>a.loc===+v&&S.sel.has(a.id)).forEach(a=>e.target.checked?S.visited.add(a.id):S.visited.delete(a.id));save();renderRoute()});
 function fallbackCopy(txt){const o=$('routeOut');let ta=o.querySelector('textarea.copybox');if(!ta){ta=document.createElement('textarea');ta.className='copybox';o.querySelector('.foot').after(ta)}ta.value=txt;ta.focus();ta.select();toast('Select all and copy the text below')}
 let lastY=20;document.addEventListener('pointerdown',e=>{lastY=e.pageY},true);
-function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;t.style.setProperty('--ty',Math.max(10,lastY-60)+'px');document.body.appendChild(t);setTimeout(()=>t.remove(),2000)}
+function toast(m,undo){document.querySelectorAll('.toast').forEach(x=>x.remove());const t=document.createElement('div');t.className='toast';t.textContent=m;
+  t.style.setProperty('--ty',Math.max(10,lastY-60)+'px');
+  if(undo){const b=document.createElement('button');b.className='undo';b.textContent='Undo';b.onclick=()=>{undo();t.remove()};t.appendChild(b)}
+  document.body.appendChild(t);setTimeout(()=>t.remove(),undo?6000:2000)}
 
 /* ---------- art viewer ---------- */
 const VW={ids:[],i:0,back:null};
